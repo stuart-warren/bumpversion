@@ -1,0 +1,3 @@
+FROM invalid.image:bad
+
+ENV test foo
