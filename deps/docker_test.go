@@ -45,6 +45,17 @@ func TestDockerImageParse(t *testing.T) {
 	}
 }
 
+func TestSetVersion(t *testing.T) {
+	f, _ := os.Open("fixtures/Dockerfile.4")
+	df, _ := deps.NewDockerFile("alpine:3.5", f)
+	df.SetVersion("alpine", "3.6@sha256:9887454752654746548375")
+	got := df.GetArtifacts()["alpine"].String()
+	expected := "alpine:3.6@sha256:9887454752654746548375"
+	if got != expected {
+		t.Errorf("got %s expected %s", got, expected)
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	for file, expected := range files {
 		t.Run(fmt.Sprintf("with %s", file), func(t *testing.T) {
@@ -53,12 +64,12 @@ func TestParseFile(t *testing.T) {
 			if err != nil {
 				t.Errorf("Failed to read %s as a Dockerfile: %s", file, err)
 			}
-			if len(d.Artifacts) < 1 {
-				t.Errorf("Expected at least one artifact, got %d", len(d.Artifacts))
+			if len(d.GetArtifacts()) < 1 {
+				t.Errorf("Expected at least one artifact, got %d", len(d.GetArtifacts()))
 			} else {
-				for _, image := range d.Artifacts {
+				for _, image := range d.GetArtifacts() {
 					if image.String() != expected {
-						t.Errorf("Expected %s, got %+v", expected, d.Artifacts)
+						t.Errorf("Expected %s, got %+v", expected, d.GetArtifacts())
 					}
 				}
 			}
@@ -139,8 +150,8 @@ func TestModifyFileWithDigest(t *testing.T) {
 	if err != nil {
 		t.Errorf("could not find image %q", "ubuntu")
 	}
-	if d.Artifacts["ubuntu"].String() != "ubuntu@sha256:987459348576783645" {
-		t.Errorf("version is not what is expected: %s", d.Artifacts["ubuntu"].String())
+	if d.GetArtifacts()["ubuntu"].String() != "ubuntu@sha256:987459348576783645" {
+		t.Errorf("version is not what is expected: %s", d.GetArtifacts()["ubuntu"].String())
 	}
 }
 
