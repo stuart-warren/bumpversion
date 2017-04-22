@@ -1,4 +1,4 @@
-package deps_test
+package dockerfile_test
 
 import (
 	"bytes"
@@ -7,21 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stuart-warren/bumpversion/deps"
+	"github.com/stuart-warren/bumpversion/deps/container/dockerfile"
 )
-
-var images = []struct {
-	input string
-	err   bool
-}{
-	{"invalid.image:bad", true},
-	{"alpine:3.5@sha256:59384573945873458347593587", false},
-	{"ubuntu", false},
-	{"ubuntu:14.04", false},
-	{"library/alpine:3.5", false},
-	{"library/alpine@sha256:59384573945873458347593587", false},
-	{"dk.tech.example.com:8080/team1/image2:latest", false},
-}
 
 var files = map[string]string{
 	"fixtures/Dockerfile.1": "ubuntu:14.04",
@@ -30,24 +17,9 @@ var files = map[string]string{
 	"fixtures/Dockerfile.4": "alpine:3.5@sha256:59384573945873458347593587",
 }
 
-func TestDockerImageParse(t *testing.T) {
-	for _, image := range images {
-		t.Run(fmt.Sprintf("with %s", image.input), func(t *testing.T) {
-			di, err := deps.NewDockerImage(image.input)
-			if image.err {
-				if err == nil {
-					t.Errorf("expected error, didn't get one")
-				}
-			} else if di.String() != image.input {
-				t.Errorf("got %s expected %s", di.String(), image.input)
-			}
-		})
-	}
-}
-
 func TestSetVersion(t *testing.T) {
 	f, _ := os.Open("fixtures/Dockerfile.4")
-	df, _ := deps.NewDockerFile("alpine:3.5", f)
+	df, _ := dockerfile.New("alpine:3.5", f)
 	df.SetVersion("alpine", "3.6@sha256:9887454752654746548375")
 	got := df.GetArtifacts()["alpine"].String()
 	expected := "alpine:3.6@sha256:9887454752654746548375"
@@ -60,7 +32,7 @@ func TestParseFile(t *testing.T) {
 	for file, expected := range files {
 		t.Run(fmt.Sprintf("with %s", file), func(t *testing.T) {
 			f, _ := os.Open(file)
-			d, err := deps.NewDockerFile(file, f)
+			d, err := dockerfile.New(file, f)
 			if err != nil {
 				t.Errorf("Failed to read %s as a Dockerfile: %s", file, err)
 			}
@@ -79,7 +51,7 @@ func TestParseFile(t *testing.T) {
 
 func TestParseBadFile(t *testing.T) {
 	f, _ := os.Open("fixtures/Dockerfile.bad")
-	_, err := deps.NewDockerFile("badimage", f)
+	_, err := dockerfile.New("badimage", f)
 	if err == nil {
 		t.Errorf("expected error reading bad image from file")
 	}
@@ -87,7 +59,7 @@ func TestParseBadFile(t *testing.T) {
 
 func TestNotParseFile(t *testing.T) {
 	f, _ := os.Open("fixtures/nonexistant")
-	_, err := deps.NewDockerFile("nonexistant", f)
+	_, err := dockerfile.New("nonexistant", f)
 	if err == nil {
 		t.Errorf("expected error reading non-existant file")
 	}
@@ -97,7 +69,7 @@ func TestReadWriteFile(t *testing.T) {
 	file := "fixtures/Dockerfile.1"
 	in := new(bytes.Buffer)
 	f, _ := os.Open(file)
-	d, err := deps.NewDockerFile(file, io.TeeReader(f, in))
+	d, err := dockerfile.New(file, io.TeeReader(f, in))
 	if err != nil {
 		t.Errorf("Failed to read %s as a Dockerfile: %s", file, err)
 	}
@@ -118,7 +90,7 @@ func TestModifyFile(t *testing.T) {
 	in := new(bytes.Buffer)
 	content := []byte("FROM ubuntu:14.04\nENTRYPOINT [\"/usr/bin/bash\"]")
 	in.Write(content)
-	d, err := deps.NewDockerFile("somefile", in)
+	d, err := dockerfile.New("somefile", in)
 	in.Reset()
 	if err != nil {
 		t.Errorf("Failed to read Dockerfile: %s", err)
@@ -141,7 +113,7 @@ func TestModifyFileWithDigest(t *testing.T) {
 	in := new(bytes.Buffer)
 	content := []byte("FROM ubuntu:14.04\nENTRYPOINT [\"/usr/bin/bash\"]")
 	in.Write(content)
-	d, err := deps.NewDockerFile("somefile", in)
+	d, err := dockerfile.New("somefile", in)
 	in.Reset()
 	if err != nil {
 		t.Errorf("Failed to read Dockerfile: %s", err)
@@ -159,7 +131,7 @@ func TestFailToModifyFile(t *testing.T) {
 	in := new(bytes.Buffer)
 	content := []byte("FROM ubuntu:14.04\nENTRYPOINT [\"/usr/bin/bash\"]\n")
 	in.Write(content)
-	d, err := deps.NewDockerFile("somefile", in)
+	d, err := dockerfile.New("somefile", in)
 	if err != nil {
 		t.Errorf("Failed to read Dockerfile: %s", err)
 	}
